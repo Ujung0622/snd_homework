@@ -36,6 +36,7 @@
       "task": "string",
       "deadline": "string | 'unknown'",
       "confidence": "'high' | 'medium' | 'low'",
+      "confidence_reason": "string (confidence 산정 이유 한 문장)",
       "evidence_quote": "string (회의록 원문 그대로)",
       "notes": "string (optional)"
     }
@@ -196,6 +197,7 @@ meeting_transcript.md    — 샘플 회의록
 | evidence_quote 원문 대조 | Hallucination 감지 | 공백·줄바꿈 차이로 false positive 가능 |
 | JSON 전체를 한 번에 요청 | API 호출 1회 | 회의록이 매우 길면 토큰 초과 가능 |
 | gemini-2.0-flash | 품질/비용 균형, 무료 티어 제공 | pro 대비 복잡한 추론 약할 수 있음 |
+| confidence_reason 필드 추가 | LLM 판단 근거 투명화, 검토 용이 | LLM이 형식적인 문장 반환할 가능성 |
 
 ---
 
@@ -261,7 +263,7 @@ python smoke_test.py
 
 ## Final Status
 
-- **Working**: CLI 실행, LLM 추출, 스키마 검증, evidence_quote 원문 대조, 최소 수량 체크, JSON export, smoke_test 10/10
+- **Working**: CLI 실행, LLM 추출, 스키마 검증, evidence_quote 원문 대조, 최소 수량 체크, JSON export (스트레치 13번), confidence_reason 표시 (스트레치 12번), smoke_test 10/10
 - **Partially working**: evidence_quote 대조 — 공백 정규화로 대부분 처리되나 완전히 다른 문장이 부분 일치할 가능성 존재
 - **Not working**: 없음 (필수 범위 내 전체 동작)
 

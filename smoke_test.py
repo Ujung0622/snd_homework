@@ -46,6 +46,7 @@ good_item = {
     "task": "백엔드 필터 PR 올리기",
     "deadline": "금요일 오전",
     "confidence": "high",
+    "confidence_reason": "담당자(준호)와 마감일(금요일 오전) 모두 명확히 언급됨",
     "evidence_quote": "금요일 오전까지 백엔드 필터 PR을 올리겠습니다.",
 }
 issues = validate_action_item(good_item, SAMPLE_TRANSCRIPT)
@@ -161,6 +162,21 @@ checks = validation["minimum_checks"]
 check("action_items >= 4", checks["action_items_>=4"])
 check("deferred_items >= 3", checks["deferred_items_>=3"])
 check("open_questions >= 1", checks["open_questions_>=1"])
+
+
+# ── Test 9: 이미 해결된 질문 감지 ──
+print("\n[Test 9] 이미 결론 난 질문 → open_questions에서 감지")
+from extractor import check_question_resolved
+
+TRANSCRIPT_RESOLVED = "준호: 자연어 날짜 검색은 이번 범위인가요? 민아: 아니요. 이번에는 자연어 날짜 검색은 하지 않습니다."
+is_resolved, hint = check_question_resolved("자연어 날짜 검색은 이번 범위인가요?", TRANSCRIPT_RESOLVED)
+check("결론 난 질문 감지", is_resolved, f"hint: {hint}")
+
+# ── Test 10: 미해결 질문은 감지하지 않음 ──
+print("\n[Test 10] 결론 없는 질문 → 감지하지 않음")
+TRANSCRIPT_UNRESOLVED = "서연: 날짜 입력 형식을 YYYY-MM-DD로 할지, 달력 컴포넌트를 쓸지는 정해야 합니다."
+is_resolved2, _ = check_question_resolved("날짜 입력 형식을 YYYY-MM-DD로 할지, 달력 컴포넌트를 쓸지는 정해야 합니다.", TRANSCRIPT_UNRESOLVED)
+check("미해결 질문 통과", not is_resolved2)
 
 
 # ── 결과 요약 ──
