@@ -69,7 +69,7 @@
 
 **사용 위치**: `extractor.py` → `call_llm()` 함수, 런타임에 매 실행마다 호출
 
-**모델**: `gemini-2.0-flash` (Google Gemini API)
+**모델**: `gemini-2.5-flash` (Google Gemini API)
 
 **System prompt 핵심 규칙**:
 - 회의록에 명시된 내용만 추출 (추측 금지)
@@ -112,7 +112,7 @@
 ```
 extractor.py (단일 파일 CLI)
 ├── call_llm()           — Google Gemini API 호출
-├── parse_llm_output()   — JSON 파싱 + 마크다운 코드블록 제거
+├── parse_llm_output()   — JSON 파싱 + 마크다운 코드블록 제거 + 줄바꿈 처리
 ├── validate_action_item() — 개별 아이템 검증
 ├── validate_results()   — 전체 결과 검증 + 최소 수량 체크
 ├── print_results()      — 터미널 출력 포맷터
@@ -145,6 +145,7 @@ meeting_transcript.md    — 샘플 회의록
 | deadline=unknown + confidence=high 불일치 | 결정적 규칙으로 경고 |
 | JSON 파싱 실패 | try/except + 원문 출력 |
 | LLM 마크다운 코드블록 | regex로 제거 후 파싱 |
+| LLM 응답 내 줄바꿈 | while 루프로 반복 제거 후 파싱 |
 | 최소 수량 미달 | `exit(2)` |
 
 ### Test plan
@@ -171,7 +172,7 @@ meeting_transcript.md    — 샘플 회의록
 ### Assumptions
 - 입력 파일은 UTF-8 인코딩
 - 회의록의 화자는 `이름:` 형식으로 구분됨
-- LLM이 한국어 회의록을 충분히 이해할 수 있음 (Gemini 2.0 Flash 기준)
+- LLM이 한국어 회의록을 충분히 이해할 수 있음 (Gemini 2.5 Flash 기준)
 - 단일 파일 실행 환경 (멀티프로세싱 불필요)
 
 ---
@@ -196,7 +197,7 @@ meeting_transcript.md    — 샘플 회의록
 | 단일 파일 | 실행 단순, 의존성 없음 | 파일이 길어짐 |
 | evidence_quote 원문 대조 | Hallucination 감지 | 공백·줄바꿈 차이로 false positive 가능 |
 | JSON 전체를 한 번에 요청 | API 호출 1회 | 회의록이 매우 길면 토큰 초과 가능 |
-| gemini-2.0-flash | 품질/비용 균형, 무료 티어 제공 | pro 대비 복잡한 추론 약할 수 있음 |
+| gemini-2.5-flash | 품질/비용 균형, 무료 티어 제공 | pro 대비 복잡한 추론 약할 수 있음 |
 | confidence_reason 필드 추가 | LLM 판단 근거 투명화, 검토 용이 | LLM이 형식적인 문장 반환할 가능성 |
 
 ---
@@ -207,10 +208,10 @@ meeting_transcript.md    — 샘플 회의록
 - **Claude (claude.ai)**: 전체 코드 구조 설계, 프롬프트 초안 작성, smoke_test 작성에 활용
 
 ### Runtime LLM integration used by the service
-- **Google Gemini API** (`gemini-2.0-flash`) — `google-genai` Python SDK 사용
+- **Google Gemini API** (`gemini-2.5-flash`) — `google-genai` Python SDK 사용
 - 설정 방법:
   ```bash
-  pip install google-genai
+  pip install -r requirements.txt
   export GEMINI_API_KEY="AIza..."
   python extractor.py
   ```
@@ -250,8 +251,10 @@ python smoke_test.py
 - ✅ open_questions >= 1
 
 ### Bugs found and fixed
-- LLM이 간혹 응답을 마크다운 코드블록(```json ... ```)으로 감싸는 경우 → regex로 제거하는 전처리 추가
+- LLM이 응답을 마크다운 코드블록(` ```json `)으로 감싸는 경우 → regex로 제거하는 전처리 추가
 - evidence_quote 대조 시 줄바꿈·공백 차이로 false positive 발생 → `re.sub(r"\s+", " ", ...)` 정규화 적용
+- LLM이 JSON 문자열 필드 중간에 줄바꿈을 삽입해 파싱 실패 → 프롬프트 규칙 추가 + `while` 루프 전처리로 이중 방어
+- `setup_logger()` 중복 호출로 로그가 2~3회씩 중복 기록 → 핸들러 존재 여부 체크(`if logger.handlers`) 추가
 
 ### Untested areas
 - 매우 긴 회의록 (토큰 초과 시나리오)
@@ -263,13 +266,12 @@ python smoke_test.py
 
 ## Final Status
 
-- **Working**: CLI 실행, LLM 추출, 스키마 검증, evidence_quote 원문 대조, 최소 수량 체크, JSON export (스트레치 13번), confidence_reason 표시 (스트레치 12번), smoke_test 10/10
+- **Working**: CLI 실행, LLM 추출, 스키마 검증, evidence_quote 원문 대조, 최소 수량 체크, JSON export (스트레치 13번), confidence_reason 표시 (스트레치 12번), 실행 로그 적재 (`logs/`), smoke_test 10/10
 - **Partially working**: evidence_quote 대조 — 공백 정규화로 대부분 처리되나 완전히 다른 문장이 부분 일치할 가능성 존재
 - **Not working**: 없음 (필수 범위 내 전체 동작)
 
 ## Next Steps
 1. 담당자별 액션 아이템 그룹화 출력 (`--group-by-owner`)
-2. confidence 산정 이유 필드 추가
-3. 매우 긴 회의록을 위한 청크 분할 처리
-4. 익명화된 검색 로그 스타일의 실행 로그 저장
-5. LLM 결과와 deterministic rule 결과 비교 리포트
+2. 매우 긴 회의록을 위한 청크 분할 처리
+3. LLM 결과와 deterministic rule 결과 비교 리포트
+4. 네트워크 타임아웃 재시도 로직 추가

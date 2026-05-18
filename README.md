@@ -123,4 +123,4 @@ snd_homework/
 
 - Python 3.10+
 - `google-genai`, `python-dotenv` 패키지 (`pip install -r requirements.txt`)
-- Google Gemini API 키 ([발급 받기](https://aistudio.google.com/app/apikey), 무료 티어 있음)
+- Google Gemini API 키 ([발급 받기](https://aistudio.google.com/app/apikey))
