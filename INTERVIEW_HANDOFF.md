@@ -13,7 +13,7 @@
 
 ### Functional requirements
 1. 한국어 회의록 파일을 로드한다
-2. 런타임에 Anthropic Claude API를 호출해 추출한다
+2. 런타임에 Google Gemini API를 호출해 추출한다
 3. 각 액션 아이템에 `owner / task / deadline / confidence / evidence_quote` 필드를 포함한다
 4. 담당자·마감일이 불명확하면 `unknown`으로 표시하고 추측하지 않는다
 5. LLM 출력을 스키마 검증 + 근거 인용 확인으로 검증한다
@@ -68,7 +68,7 @@
 
 **사용 위치**: `extractor.py` → `call_llm()` 함수, 런타임에 매 실행마다 호출
 
-**모델**: `claude-sonnet-4-5`
+**모델**: `gemini-2.0-flash` (Google Gemini API)
 
 **System prompt 핵심 규칙**:
 - 회의록에 명시된 내용만 추출 (추측 금지)
@@ -110,7 +110,7 @@
 ### Planned architecture
 ```
 extractor.py (단일 파일 CLI)
-├── call_llm()           — Anthropic API 호출
+├── call_llm()           — Google Gemini API 호출
 ├── parse_llm_output()   — JSON 파싱 + 마크다운 코드블록 제거
 ├── validate_action_item() — 개별 아이템 검증
 ├── validate_results()   — 전체 결과 검증 + 최소 수량 체크
@@ -125,7 +125,7 @@ meeting_transcript.md    — 샘플 회의록
 1. 프로젝트 디렉토리 생성 및 `requirements.txt` 작성
 2. `meeting_transcript.md` 샘플 파일 준비
 3. LLM 시스템 프롬프트 및 추출 프롬프트 설계
-4. `call_llm()` — Anthropic SDK 호출 + 에러 처리
+4. `call_llm()` — Google Gemini SDK 호출 + 에러 처리
 5. `parse_llm_output()` — JSON 파싱 + 코드블록 제거
 6. `validate_action_item()` — 필수 필드 / confidence / evidence_quote 검증
 7. `validate_results()` — 전체 검증 + 최소 수량 체크
@@ -170,7 +170,7 @@ meeting_transcript.md    — 샘플 회의록
 ### Assumptions
 - 입력 파일은 UTF-8 인코딩
 - 회의록의 화자는 `이름:` 형식으로 구분됨
-- LLM이 한국어 회의록을 충분히 이해할 수 있음 (Claude Sonnet 기준)
+- LLM이 한국어 회의록을 충분히 이해할 수 있음 (Gemini 2.0 Flash 기준)
 - 단일 파일 실행 환경 (멀티프로세싱 불필요)
 
 ---
@@ -195,7 +195,7 @@ meeting_transcript.md    — 샘플 회의록
 | 단일 파일 | 실행 단순, 의존성 없음 | 파일이 길어짐 |
 | evidence_quote 원문 대조 | Hallucination 감지 | 공백·줄바꿈 차이로 false positive 가능 |
 | JSON 전체를 한 번에 요청 | API 호출 1회 | 회의록이 매우 길면 토큰 초과 가능 |
-| claude-sonnet-4-5 | 품질/비용 균형 | opus 대비 복잡한 추론 약할 수 있음 |
+| gemini-2.0-flash | 품질/비용 균형, 무료 티어 제공 | pro 대비 복잡한 추론 약할 수 있음 |
 
 ---
 
@@ -205,13 +205,14 @@ meeting_transcript.md    — 샘플 회의록
 - **Claude (claude.ai)**: 전체 코드 구조 설계, 프롬프트 초안 작성, smoke_test 작성에 활용
 
 ### Runtime LLM integration used by the service
-- **Anthropic Claude API** (`claude-sonnet-4-5`) — `anthropic` Python SDK 사용
+- **Google Gemini API** (`gemini-2.0-flash`) — `google-genai` Python SDK 사용
 - 설정 방법:
   ```bash
-  pip install anthropic
-  export ANTHROPIC_API_KEY="sk-ant-..."
+  pip install google-genai
+  export GEMINI_API_KEY="AIza..."
   python extractor.py
   ```
+- API 키 발급: https://aistudio.google.com/app/apikey (무료 티어 있음)
 
 ### How I verified AI/LLM output
 1. **스키마 검증**: 필수 필드 존재 여부, confidence 허용 값 체크

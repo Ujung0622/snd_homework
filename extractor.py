@@ -12,9 +12,10 @@ from pathlib import Path
 from typing import Optional
 
 try:
-    import anthropic
+    from google import genai
+    from google.genai import errors as genai_errors
 except ImportError:
-    print("[ERROR] anthropic 패키지가 설치되지 않았습니다. 'pip install anthropic' 를 실행하세요.")
+    print("[ERROR] google-genai 패키지가 설치되지 않았습니다. 'pip install google-genai' 를 실행하세요.")
     sys.exit(1)
 
 
@@ -84,33 +85,31 @@ EXTRACTION_PROMPT_TEMPLATE = """아래 회의록을 분석해서 JSON 형식으�
 # LLM 호출
 # ─────────────────────────────────────────────
 
-def call_llm(transcript: str, api_key: str) -> dict:
-    """Anthropic API를 호출해 회의록을 분석합니다."""
-    client = anthropic.Anthropic(api_key=api_key)
+def call_llm(transcript: str, api_key: str) -> str:
+    """Google Gemini API를 호출해 회의록을 분석합니다."""
+    client = genai.Client(api_key=api_key)
 
-    prompt = EXTRACTION_PROMPT_TEMPLATE.format(transcript=transcript)
+    prompt = SYSTEM_PROMPT + "\n\n" + EXTRACTION_PROMPT_TEMPLATE.format(transcript=transcript)
 
     try:
-        message = client.messages.create(
-            model="claude-sonnet-4-5",
-            max_tokens=4096,
-            system=SYSTEM_PROMPT,
-            messages=[{"role": "user", "content": prompt}],
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=prompt,
         )
-    except anthropic.AuthenticationError:
-        print("[ERROR] API 키가 유효하지 않습니다. ANTHROPIC_API_KEY를 확인하세요.")
+    except genai_errors.APIError as e:
+        status = getattr(e, "status_code", None)
+        if status == 401 or status == 403:
+            print("[ERROR] API 키가 유효하지 않습니다. GEMINI_API_KEY를 확인하세요.")
+        elif status == 429:
+            print("[ERROR] API 요청 한도를 초과했습니다. 잠시 후 다시 시도하세요.")
+        else:
+            print(f"[ERROR] API 호출 실패: {e}")
         sys.exit(1)
-    except anthropic.RateLimitError:
-        print("[ERROR] API 요청 한도를 초과했습니다. 잠시 후 다시 시도하세요.")
-        sys.exit(1)
-    except anthropic.APIConnectionError:
-        print("[ERROR] API 서버에 연결할 수 없습니다. 네트워크 상태를 확인하세요.")
-        sys.exit(1)
-    except anthropic.APIError as e:
-        print(f"[ERROR] API 호출 실패: {e}")
+    except Exception as e:
+        print(f"[ERROR] 예상치 못한 오류: {e}")
         sys.exit(1)
 
-    raw_text = message.content[0].text.strip()
+    raw_text = response.text.strip()
     return raw_text
 
 
@@ -314,10 +313,10 @@ def main():
     args = parser.parse_args()
 
     # API 키 확인
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
-        print("[ERROR] ANTHROPIC_API_KEY 환경 변수가 설정되지 않았습니다.")
-        print("  export ANTHROPIC_API_KEY='sk-ant-...'  또는  .env 파일을 설정하세요.")
+        print("[ERROR] GEMINI_API_KEY 환경 변수가 설정되지 않았습니다.")
+        print("  export GEMINI_API_KEY='AIza...'  또는  .env 파일을 설정하세요.")
         sys.exit(1)
 
     # 회의록 로드

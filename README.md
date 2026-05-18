@@ -1,7 +1,7 @@
 # 회의록 액션 아이템 추출기
 
 한국어 회의록을 입력받아 **액션 아이템 / 보류 항목 / 미해결 질문**을 구조화해 출력하는 Python CLI 도구입니다.  
-런타임에 Anthropic Claude API를 호출하며, LLM 출력을 스키마 검증 및 근거 인용 확인으로 검증합니다.
+런타임에 Google Gemini API(`gemini-2.0-flash`)를 호출하며, LLM 출력을 스키마 검증 및 근거 인용 확인으로 검증합니다.
 
 ---
 
@@ -19,8 +19,9 @@ pip install -r requirements.txt
 
 # API 키 설정
 cp .env.example .env
-# .env 파일을 열어 ANTHROPIC_API_KEY 값을 입력하세요
-export ANTHROPIC_API_KEY="sk-ant-..."
+# .env 파일을 열어 GEMINI_API_KEY 값을 입력하세요
+# 키 발급: https://aistudio.google.com/app/apikey
+export GEMINI_API_KEY="AIza..."
 ```
 
 ### 2. 실행
@@ -83,7 +84,7 @@ python smoke_test.py
 ## 파일 구조
 
 ```
-meeting-action-extractor/
+snd_homework/
 ├── extractor.py          # 메인 CLI 도구
 ├── smoke_test.py         # 검증 레이어 단위 테스트 (LLM 불필요)
 ├── meeting_transcript.md # 샘플 회의록
@@ -110,5 +111,5 @@ meeting-action-extractor/
 ## 요구사항
 
 - Python 3.10+
-- `anthropic` 패키지 (`pip install anthropic`)
-- Anthropic API 키
+- `google-genai` 패키지 (`pip install google-genai`)
+- Google Gemini API 키 ([발급 받기](https://aistudio.google.com/app/apikey), 무료 티어 있음)
