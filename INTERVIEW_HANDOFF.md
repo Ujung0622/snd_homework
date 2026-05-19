@@ -186,7 +186,7 @@ meeting_transcript.md    — 샘플 회의록
 - `requirements.txt`, `.env.example`, `README.md`, `INTERVIEW_HANDOFF.md`
 
 ### Key design choices
-1. **단일 파일 CLI**: 복잡한 패키지 구조 없이 `extractor.py` 하나로 완결. 인터뷰어가 바로 실행 가능
+1. **단일 파일 CLI**: 패키지 구조 없이 파일 하나를 그대로 실행할 수 있어서 환경 구성이 단순하고, 인터뷰어가 전체 흐름을 한 파일에서 리뷰할 수 있음. 이 규모에서 모듈 분리는 오버엔지니어링이라고 판단. 대신 검증 함수들을 독립적으로 분리하여 `smoke_test.py`에서 LLM 없이도 테스트할 수 있게 설계
 2. **검증을 별도 레이어로 분리**: `validate_action_item()` / `validate_results()`를 독립 함수로 분리해 smoke_test에서 LLM 없이 테스트 가능
 3. **evidence_quote 원문 대조**: LLM이 요약·변형한 인용구를 실제 회의록 원문과 대조해 hallucination 감지
 4. **결정적 규칙 병행**: confidence/deadline 불일치 같은 논리적 모순은 LLM에 맡기지 않고 코드 레벨에서 감지
@@ -194,11 +194,11 @@ meeting_transcript.md    — 샘플 회의록
 ### Tradeoffs
 | 결정 | 장점 | 단점 |
 |------|------|------|
-| 단일 파일 | 실행 단순, 의존성 없음 | 파일이 길어짐 |
+| 단일 파일 | 환경 구성 단순, 전체 흐름 한 파일 리뷰 가능, 검증 함수 분리로 LLM 없이 테스트 가능 | 파일이 길어짐. 프로덕션이었다면 모듈 분리 필요 |
 | evidence_quote 원문 대조 | Hallucination 감지 | 공백·줄바꿈 차이로 false positive 가능 |
 | JSON 전체를 한 번에 요청 | API 호출 1회 | 회의록이 매우 길면 토큰 초과 가능 |
 | gemini-2.5-flash | 품질/비용 균형, 무료 티어 제공 | pro 대비 복잡한 추론 약할 수 있음 |
-| confidence_reason 필드 추가 | LLM 판단 근거 투명화, 검토 용이 | LLM이 형식적인 문장 반환할 가능성 |
+| confidence_reason 필드 추가 | LLM 판단 근거 투명화, 검토 용이 | evidence_quote와 달리 원문 대조로 검증 불가 — 틀린 이유를 그럴듯하게 반환해도 잡을 수 없음 |
 
 ---
 
